@@ -1,0 +1,22 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Build Sidebar",
+        "type": "shell",
+        "command": "g++",
+        "args": [
+          "main.cpp",
+          "-o",
+          "ToDoSidebarApp.exe",
+          "-mwindows"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": []
+      }
+    ]
+  }
+  
