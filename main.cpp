@@ -1,191 +1,154 @@
 #include <windows.h>
 #include <fstream>
-#include <string>
 #include <vector>
+#include <string>
 #include <locale>
 #include <codecvt>
 
-#define ID_ADD 1
+#define ID_ADD    1
 #define ID_REMOVE 2
-#define ID_LISTBOX 3
+#define ID_LIST   3
+#define ID_OK     4
 
 HWND hListBox;
 std::vector<std::wstring> tasks;
 
-// Save tasks to a file
+// Save tasks to file with UTF-8 encoding
 void SaveTasks() {
-    std::ofstream file("tasks.txt"); // Use narrow string
-    for (const auto& task : tasks) {
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-        file << converter.to_bytes(task) << "\n";
-    }
+    std::wofstream file("tasks.txt", std::ios::out);
+    file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
+    for (const auto& task : tasks)
+        file << task << L"\n";
 }
 
-
-// Load tasks from a file
+// Load tasks from file with UTF-8 encoding
 void LoadTasks() {
+    std::wifstream file("tasks.txt", std::ios::in);
+    file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
+    std::wstring line;
     tasks.clear();
-    std::ifstream file("tasks.txt");
-    std::string line;
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-
-    while (std::getline(file, line)) {
-        tasks.push_back(converter.from_bytes(line));
-    }
+    while (std::getline(file, line))
+        tasks.push_back(line);
 }
 
-
-// Refresh ListBox UI
+// Refresh ListBox with updated tasks
 void RefreshListBox() {
     SendMessage(hListBox, LB_RESETCONTENT, 0, 0);
-    for (const auto& task : tasks)
+    for (const auto& task : tasks) {
         SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)task.c_str());
+    }
 }
 
-// Custom input window class for adding tasks
-LRESULT CALLBACK InputWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+// Custom Input Dialog (as in the first program)
+LRESULT CALLBACK InputProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     static HWND hEdit;
     switch (msg) {
         case WM_CREATE:
-            hEdit = CreateWindowW(L"EDIT", nullptr,
-                WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-                10, 10, 260, 25,
-                hwnd, nullptr, nullptr, nullptr);
+            hEdit = CreateWindowW(L"EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+                                  10, 10, 200, 25, hwnd, NULL, NULL, NULL);
             CreateWindowW(L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE,
-                110, 50, 60, 25,
-                hwnd, (HMENU)IDOK, nullptr, nullptr);
+                          75, 50, 50, 25, hwnd, (HMENU)ID_OK, NULL, NULL);
+            SetWindowLongPtr(hwnd, GWLP_USERDATA, lParam);
             break;
         case WM_COMMAND:
-            if (LOWORD(wParam) == IDOK) {
+            if (LOWORD(wParam) == ID_OK) {
                 wchar_t* buffer = (wchar_t*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
                 GetWindowTextW(hEdit, buffer, 256);
-                EndDialog(hwnd, IDOK);
+                DestroyWindow(hwnd);
             }
             break;
         case WM_CLOSE:
-            EndDialog(hwnd, IDCANCEL);
+            DestroyWindow(hwnd);
             break;
     }
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-// Show input dialog using CreateDialog-like logic (no resources)
-bool ShowInputDialog(HWND parent, wchar_t* buffer, int length) {
+// Add task via custom input dialog
+bool ShowInputDialog(HWND parent, wchar_t* buffer, int maxLen) {
     WNDCLASSW wc = {};
-    wc.lpfnWndProc = InputWndProc;
-    wc.hInstance = GetModuleHandle(nullptr);
-    wc.lpszClassName = L"InputWindow";
+    wc.lpfnWndProc = InputProc;
+    wc.hInstance = GetModuleHandle(NULL);
+    wc.lpszClassName = L"InputClass";
     RegisterClassW(&wc);
 
-    HWND hwnd = CreateWindowExW(0, L"InputWindow", L"Add Task",
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-        CW_USEDEFAULT, CW_USEDEFAULT, 300, 130,
-        parent, nullptr, GetModuleHandle(nullptr), nullptr);
+    HWND hwnd = CreateWindowW(L"InputClass", L"New Task",
+                              WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+                              CW_USEDEFAULT, CW_USEDEFAULT, 230, 130,
+                              parent, NULL, wc.hInstance, NULL);
 
     SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)buffer);
     ShowWindow(hwnd, SW_SHOW);
 
     MSG msg;
-    while (GetMessageW(&msg, nullptr, 0, 0)) {
-        if (!IsDialogMessage(hwnd, &msg)) {
-            TranslateMessage(&msg);
-            DispatchMessageW(&msg);
-        }
-        if (!IsWindow(hwnd)) break; // Dialog closed
+    while (IsWindow(hwnd) && GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
 
     return wcslen(buffer) > 0;
 }
 
 // Main window procedure
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    switch (uMsg) {
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
         case WM_CREATE:
             LoadTasks();
-
-            hListBox = CreateWindowW(L"LISTBOX", nullptr,
-                WS_CHILD | WS_VISIBLE | LBS_NOTIFY | WS_VSCROLL,
-                10, 10, 260, 280,
-                hwnd, (HMENU)ID_LISTBOX,
-                (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
-                nullptr);
-
+            hListBox = CreateWindowW(L"LISTBOX", NULL, WS_CHILD | WS_VISIBLE | LBS_NOTIFY | WS_VSCROLL | WS_BORDER,
+                                     10, 10, 260, 300, hwnd, (HMENU)ID_LIST, NULL, NULL);
             CreateWindowW(L"BUTTON", L"Add", WS_CHILD | WS_VISIBLE,
-                10, 300, 120, 30,
-                hwnd, (HMENU)ID_ADD,
-                (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
-                nullptr);
-
+                          10, 320, 120, 30, hwnd, (HMENU)ID_ADD, NULL, NULL);
             CreateWindowW(L"BUTTON", L"Remove", WS_CHILD | WS_VISIBLE,
-                150, 300, 120, 30,
-                hwnd, (HMENU)ID_REMOVE,
-                (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
-                nullptr);
-
-            RefreshListBox();
+                          150, 320, 120, 30, hwnd, (HMENU)ID_REMOVE, NULL, NULL);
+            RefreshListBox(); // Ensure ListBox is populated
             break;
-
         case WM_COMMAND:
             if (LOWORD(wParam) == ID_ADD) {
-                wchar_t buffer[256] = {};
-                if (ShowInputDialog(hwnd, buffer, 256)) {
-                    tasks.emplace_back(buffer);
-                    RefreshListBox();
-                    SaveTasks();
+                wchar_t buf[256] = {};
+                if (ShowInputDialog(hwnd, buf, 256)) {
+                    tasks.push_back(buf);        // Add task to vector
+                    RefreshListBox();            // Refresh the ListBox
+                    SaveTasks();                 // Save tasks to file
                 }
             } else if (LOWORD(wParam) == ID_REMOVE) {
-                int sel = (int)SendMessage(hListBox, LB_GETCURSEL, 0, 0);
-                if (sel != LB_ERR && sel < (int)tasks.size()) {
-                    tasks.erase(tasks.begin() + sel);
-                    RefreshListBox();
-                    SaveTasks();
+                int index = (int)SendMessage(hListBox, LB_GETCURSEL, 0, 0); // Get selected index
+                if (index != LB_ERR) {      // Ensure a valid item is selected
+                    tasks.erase(tasks.begin() + index);   // Remove the selected task
+                    RefreshListBox();        // Refresh ListBox after removal
+                    SaveTasks();             // Save tasks to file
                 }
             }
             break;
-
         case WM_CLOSE:
-            SaveTasks();
+            SaveTasks(); // Save tasks on close
             DestroyWindow(hwnd);
             break;
         case WM_DESTROY:
             PostQuitMessage(0);
             break;
     }
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
 // Entry point
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     WNDCLASSW wc = {};
-    wc.lpfnWndProc = WindowProc;
+    wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
-    wc.lpszClassName = L"ToDoSidebar";
+    wc.lpszClassName = L"ToDoAppClass";
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+    RegisterClassW(&wc);
 
-    if (!RegisterClassW(&wc)) {
-        MessageBoxW(nullptr, L"Failed to register window class!", L"Error", MB_OK | MB_ICONERROR);
-        return -1;
-    }
-
-    HWND hwnd = CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-        L"ToDoSidebar", L"To-Do Sidebar",
-        WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
-        100, 100, 220, 400,
-        nullptr, nullptr, hInstance, nullptr);
-
-    if (!hwnd) {
-        MessageBoxW(nullptr, L"Failed to create window!", L"Error", MB_OK | MB_ICONERROR);
-        return -1;
-    }
-
+    HWND hwnd = CreateWindowExW(0, L"ToDoAppClass", L"To-Do Sidebar",
+                                WS_OVERLAPPEDWINDOW, 100, 100, 300, 400,
+                                NULL, NULL, hInstance, NULL);
     ShowWindow(hwnd, nCmdShow);
+    UpdateWindow(hwnd);
 
-    MSG msg = {};
-    while (GetMessageW(&msg, nullptr, 0, 0)) {
+    MSG msg;
+    while (GetMessageW(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-
     return 0;
 }

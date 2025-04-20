@@ -1,2 +1,0 @@
-#define IDD_ADDTASK_DIALOG 101
-#define IDC_TASK_INPUT     1001
