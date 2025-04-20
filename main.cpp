@@ -155,21 +155,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 }
 
 // Entry point
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = L"ToDoSidebar";
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
 
-    RegisterClassW(&wc);
+    if (!RegisterClassW(&wc)) {
+        MessageBoxW(nullptr, L"Failed to register window class!", L"Error", MB_OK | MB_ICONERROR);
+        return -1;
+    }
 
     HWND hwnd = CreateWindowExW(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
         L"ToDoSidebar", L"To-Do Sidebar",
         WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
-        100, 100, 300, 400,
+        100, 100, 220, 400,
         nullptr, nullptr, hInstance, nullptr);
+
+    if (!hwnd) {
+        MessageBoxW(nullptr, L"Failed to create window!", L"Error", MB_OK | MB_ICONERROR);
+        return -1;
+    }
 
     ShowWindow(hwnd, nCmdShow);
 
