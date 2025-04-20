@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "Build Sidebar",
+        "label": "Build ToDo App",
         "type": "shell",
         "command": "g++",
         "args": [
@@ -15,7 +15,7 @@
           "kind": "build",
           "isDefault": true
         },
-        "problemMatcher": []
+        "problemMatcher": ["$gcc"]
       }
     ]
   }

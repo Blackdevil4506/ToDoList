@@ -2,15 +2,23 @@
     "version": "0.2.0",
     "configurations": [
       {
-        "name": "Run Sidebar App",
-        "type": "cppvsdbg",
+        "name": "Run ToDo App",
+        "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceFolder}/ToDoSidebarApp.exe",
         "args": [],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
-        "environment": [],
-        "console": "internalConsole"
+        "externalConsole": true,
+        "MIMode": "gdb",
+        "miDebuggerPath": "gdb",
+        "setupCommands": [
+          {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+          }
+        ]
       }
     ]
   }
