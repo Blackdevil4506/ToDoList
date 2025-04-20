@@ -2,7 +2,8 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include "resource.h"
+#include <locale>
+#include <codecvt>
 
 #define ID_ADD 1
 #define ID_REMOVE 2
@@ -11,32 +12,28 @@
 HWND hListBox;
 std::vector<std::wstring> tasks;
 
+// Save tasks to a file
 void SaveTasks() {
-    FILE* file = _wfopen(L"tasks.txt", L"w, ccs=UNICODE");
-    if (!file) return;
-
+    std::ofstream file("tasks.txt"); // Use narrow string
     for (const auto& task : tasks) {
-        fwprintf(file, L"%s\n", task.c_str());
+        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+        file << converter.to_bytes(task) << "\n";
     }
-
-    fclose(file);
 }
 
+
+// Load tasks from a file
 void LoadTasks() {
     tasks.clear();
+    std::ifstream file("tasks.txt");
+    std::string line;
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 
-    FILE* file = _wfopen(L"tasks.txt", L"r, ccs=UNICODE");
-    if (!file) return;
-
-    wchar_t buffer[512];
-    while (fgetws(buffer, 512, file)) {
-        // Remove trailing newline
-        buffer[wcslen(buffer) - 1] = 0;
-        tasks.emplace_back(buffer);
+    while (std::getline(file, line)) {
+        tasks.push_back(converter.from_bytes(line));
     }
-
-    fclose(file);
 }
+
 
 // Refresh ListBox UI
 void RefreshListBox() {
@@ -45,73 +42,88 @@ void RefreshListBox() {
         SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)task.c_str());
 }
 
-// Dialog procedure for getting task input
-INT_PTR CALLBACK AddTaskDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    static wchar_t* inputBuffer;
-    switch (uMsg) {
-        case WM_INITDIALOG:
-            inputBuffer = (wchar_t*)lParam;
-            return TRUE;
+// Custom input window class for adding tasks
+LRESULT CALLBACK InputWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    static HWND hEdit;
+    switch (msg) {
+        case WM_CREATE:
+            hEdit = CreateWindowW(L"EDIT", nullptr,
+                WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+                10, 10, 260, 25,
+                hwnd, nullptr, nullptr, nullptr);
+            CreateWindowW(L"BUTTON", L"OK", WS_CHILD | WS_VISIBLE,
+                110, 50, 60, 25,
+                hwnd, (HMENU)IDOK, nullptr, nullptr);
+            break;
         case WM_COMMAND:
             if (LOWORD(wParam) == IDOK) {
-                GetDlgItemTextW(hwndDlg, 1001, inputBuffer, 256);
-                EndDialog(hwndDlg, IDOK);
-                return TRUE;
-            } else if (LOWORD(wParam) == IDCANCEL) {
-                EndDialog(hwndDlg, IDCANCEL);
-                return TRUE;
+                wchar_t* buffer = (wchar_t*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+                GetWindowTextW(hEdit, buffer, 256);
+                EndDialog(hwnd, IDOK);
             }
             break;
+        case WM_CLOSE:
+            EndDialog(hwnd, IDCANCEL);
+            break;
     }
-    return FALSE;
+    return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-// Create a very simple custom input dialog using MessageBox style fallback
+// Show input dialog using CreateDialog-like logic (no resources)
 bool ShowInputDialog(HWND parent, wchar_t* buffer, int length) {
-    HWND hwndInput = CreateWindowExW(
-        0, L"EDIT", nullptr,
-        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-        10, 10, 180, 25,
-        parent, (HMENU)1001,
-        (HINSTANCE)GetWindowLongPtr(parent, GWLP_HINSTANCE),
-        nullptr
-    );
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = InputWndProc;
+    wc.hInstance = GetModuleHandle(nullptr);
+    wc.lpszClassName = L"InputWindow";
+    RegisterClassW(&wc);
 
-    if (DialogBoxParamW(nullptr, MAKEINTRESOURCE(101), parent, AddTaskDialogProc, (LPARAM)buffer) == IDOK) {
-        return true;
+    HWND hwnd = CreateWindowExW(0, L"InputWindow", L"Add Task",
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+        CW_USEDEFAULT, CW_USEDEFAULT, 300, 130,
+        parent, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)buffer);
+    ShowWindow(hwnd, SW_SHOW);
+
+    MSG msg;
+    while (GetMessageW(&msg, nullptr, 0, 0)) {
+        if (!IsDialogMessage(hwnd, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+        if (!IsWindow(hwnd)) break; // Dialog closed
     }
 
-    return false;
+    return wcslen(buffer) > 0;
 }
 
 // Main window procedure
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
-        case WM_CREATE: {
+        case WM_CREATE:
             LoadTasks();
 
             hListBox = CreateWindowW(L"LISTBOX", nullptr,
                 WS_CHILD | WS_VISIBLE | LBS_NOTIFY | WS_VSCROLL,
-                10, 10, 180, 280,
+                10, 10, 260, 280,
                 hwnd, (HMENU)ID_LISTBOX,
                 (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
                 nullptr);
 
             CreateWindowW(L"BUTTON", L"Add", WS_CHILD | WS_VISIBLE,
-                10, 300, 80, 30,
+                10, 300, 120, 30,
                 hwnd, (HMENU)ID_ADD,
                 (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
                 nullptr);
 
             CreateWindowW(L"BUTTON", L"Remove", WS_CHILD | WS_VISIBLE,
-                110, 300, 80, 30,
+                150, 300, 120, 30,
                 hwnd, (HMENU)ID_REMOVE,
                 (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
                 nullptr);
 
             RefreshListBox();
             break;
-        }
 
         case WM_COMMAND:
             if (LOWORD(wParam) == ID_ADD) {
@@ -148,7 +160,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = L"ToDoSidebar";
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
     RegisterClassW(&wc);
 
@@ -156,7 +168,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
         L"ToDoSidebar", L"To-Do Sidebar",
         WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,
-        100, 100, 220, 400,
+        100, 100, 300, 400,
         nullptr, nullptr, hInstance, nullptr);
 
     ShowWindow(hwnd, nCmdShow);
