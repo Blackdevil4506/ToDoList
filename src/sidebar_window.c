@@ -14,21 +14,41 @@ static LRESULT CALLBACK Sidebar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             PostQuitMessage(0);
             return 0;
         case WM_PAINT:
-    {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
+{
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
 
-        // Create a dark background brush
-        HBRUSH bgBrush = CreateSolidBrush(RGB(30, 30, 30));
+    // 1. Get the full window size
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
 
-        // Fill the window's paint area with the brush
-        FillRect(hdc, &ps.rcPaint, bgBrush);
-        // Clean up GDI object
-        DeleteObject(bgBrush);
+    int windowWidth  = clientRect.right;
+    int windowHeight = clientRect.bottom;
 
-        EndPaint(hwnd, &ps);
-        return 0;
-    }
+    // 2. Paint sidebar background
+    HBRUSH bgBrush = CreateSolidBrush(RGB(30, 30, 30));
+    FillRect(hdc, &clientRect, bgBrush);
+    DeleteObject(bgBrush);
+
+    // 3. Define thin strip size
+    int stripWidth = 10;
+
+    // 4. Calculate strip position (RIGHT side)
+    RECT stripRect;
+    stripRect.left   = windowWidth - stripWidth;
+    stripRect.top    = 0;
+    stripRect.right  = windowWidth;
+    stripRect.bottom = windowHeight;
+
+    // 5. Paint the thin strip
+    HBRUSH stripBrush = CreateSolidBrush(RGB(60, 60, 60));
+    FillRect(hdc, &stripRect, stripBrush);
+    DeleteObject(stripBrush);
+
+    EndPaint(hwnd, &ps);
+    return 0;
+}
+
 
     }
 
