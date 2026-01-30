@@ -13,6 +13,23 @@ static LRESULT CALLBACK Sidebar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
+        case WM_PAINT:
+    {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+
+        // Create a dark background brush
+        HBRUSH bgBrush = CreateSolidBrush(RGB(30, 30, 30));
+
+        // Fill the window's paint area with the brush
+        FillRect(hdc, &ps.rcPaint, bgBrush);
+        // Clean up GDI object
+        DeleteObject(bgBrush);
+
+        EndPaint(hwnd, &ps);
+        return 0;
+    }
+
     }
 
     return DefWindowProcW(hwnd, msg, wParam, lParam);
@@ -49,3 +66,4 @@ HWND Sidebar_Create(HINSTANCE hInstance)
 
     return hwnd;
 }
+
