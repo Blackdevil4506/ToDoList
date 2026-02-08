@@ -1,4 +1,6 @@
 #include "edge_handle.h"
+static BOOL g_isHover = FALSE;
+
 
 /*
     Window class name for the edge handle
@@ -18,21 +20,71 @@ static LRESULT CALLBACK EdgeHandle_WndProc(
     switch (msg)
     {
         case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hwnd, &ps);
+    {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
 
-            RECT rc;
-            GetClientRect(hwnd, &rc);
+        RECT rc;
+        GetClientRect(hwnd, &rc);
 
-            // Visible edge handle color (temporary)
-            HBRUSH brush = CreateSolidBrush(RGB(80, 80, 80));
-            FillRect(hdc, &rc, brush);
-            DeleteObject(brush);
+        // Background color
+        COLORREF color = g_isHover
+            ? RGB(110, 110, 110)   // hover
+            : RGB(80, 80, 80);     // normal
 
-            EndPaint(hwnd, &ps);
-            return 0;
-        }
+        HBRUSH brush = CreateSolidBrush(color);
+        HPEN pen = CreatePen(PS_NULL, 0, color);
+
+        HGDIOBJ oldBrush = SelectObject(hdc, brush);
+        HGDIOBJ oldPen   = SelectObject(hdc, pen);
+
+        // Rounded rectangle (grip look)
+        RoundRect(
+            hdc,
+            rc.left,
+            rc.top,
+            rc.right,
+            rc.bottom,
+            12,   // corner radius X
+            12    // corner radius Y
+        );
+
+        SelectObject(hdc, oldBrush);
+        SelectObject(hdc, oldPen);
+        DeleteObject(brush);
+        DeleteObject(pen);
+
+        EndPaint(hwnd, &ps);
+        return 0;
+    }
+    case WM_MOUSEMOVE:
+{
+    if (!g_isHover)
+    {
+        g_isHover = TRUE;
+        InvalidateRect(hwnd, NULL, TRUE);
+
+        TRACKMOUSEEVENT tme = {0};
+        tme.cbSize = sizeof(tme);
+        tme.dwFlags = TME_LEAVE;
+        tme.hwndTrack = hwnd;
+        TrackMouseEvent(&tme);
+    }
+    return 0;
+}
+
+    case WM_MOUSELEAVE:
+    {
+        g_isHover = FALSE;
+        InvalidateRect(hwnd, NULL, TRUE);
+        return 0;
+    }
+
+    case WM_SETCURSOR:
+    {
+        SetCursor(LoadCursor(NULL, IDC_HAND));
+        return TRUE;
+    }
 
         case WM_DESTROY:
             return 0;
@@ -63,7 +115,7 @@ HWND EdgeHandle_Create(HINSTANCE hInstance, EdgeSide side)
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
     // 3. Edge handle size
-    int handleWidth  = 30;
+    int handleWidth  = 16;
     int handleHeight = 100;   // small handle like your image
 
 int x = (side == EDGE_LEFT)
@@ -103,7 +155,7 @@ void EdgeHandle_UpdatePosition(HWND hwnd, EdgeSide side)
     int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-    int handleWidth = 30;
+    int handleWidth = 16;
 
     int x = (side == EDGE_LEFT)
         ? 0
