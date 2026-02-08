@@ -1,8 +1,10 @@
 #include "app.h"
 #include "sidebar_window.h"
+#include "edge_handle.h"
 
 BOOL App_Init(AppState* app, HINSTANCE hInstance)
 {
+    // Store application instance
     app->hInstance = hInstance;
 
     // Create main sidebar window and store its handle
@@ -16,6 +18,10 @@ BOOL App_Init(AppState* app, HINSTANCE hInstance)
 
     // Force a paint/update immediately
     UpdateWindow(app->hwndMain);
+
+    app->edgeSide = EDGE_LEFT;   // temporary, we’ll load from settings later
+    app->hwndEdge = EdgeHandle_Create(hInstance, app->edgeSide);
+
 
     return TRUE;
 }

@@ -17,12 +17,30 @@ static LRESULT CALLBACK EdgeHandle_WndProc(
 {
     switch (msg)
     {
+        case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+
+            // Visible edge handle color (temporary)
+            HBRUSH brush = CreateSolidBrush(RGB(80, 80, 80));
+            FillRect(hdc, &rc, brush);
+            DeleteObject(brush);
+
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+
         case WM_DESTROY:
             return 0;
     }
 
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
+
 
 /*
     Create the edge handle window
@@ -46,14 +64,15 @@ HWND EdgeHandle_Create(HINSTANCE hInstance, EdgeSide side)
 
     // 3. Edge handle size
     int handleWidth  = 30;
-    int handleHeight = screenHeight;
+    int handleHeight = 100;   // small handle like your image
 
-    // 4. Calculate position based on side
-    int x = (side == EDGE_LEFT)
-        ? 0
-        : screenWidth - handleWidth;
+int x = (side == EDGE_LEFT)
+    ? 0
+    : screenWidth - handleWidth;
 
-    int y = 0;
+// center vertically
+    int y = (screenHeight - handleHeight) / 2;
+
 
     // 5. Create window
     HWND hwnd = CreateWindowExW(
@@ -90,13 +109,17 @@ void EdgeHandle_UpdatePosition(HWND hwnd, EdgeSide side)
         ? 0
         : screenWidth - handleWidth;
 
+    int handleHeight = 100;
+    int y = (screenHeight - handleHeight) / 2;
+
     SetWindowPos(
         hwnd,
         HWND_TOPMOST,
         x,
-        0,
+        y,
         handleWidth,
-        screenHeight,
+        handleHeight,
         SWP_SHOWWINDOW
     );
+
 }
