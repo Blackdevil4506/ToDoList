@@ -3,24 +3,22 @@
 
 #include <windows.h>
 
-/*
-    Which side of the screen the edge handle is on
-*/
+/* Forward declaration (no include!) */
+typedef struct AppState AppState;
+
+/* Edge side enum */
 typedef enum {
     EDGE_LEFT,
     EDGE_RIGHT
 } EdgeSide;
 
-/*
-    Creates the edge handle window.
-    - hInstance: application instance
-    - side: EDGE_LEFT or EDGE_RIGHT
-*/
-HWND EdgeHandle_Create(HINSTANCE hInstance, EdgeSide side);
+/* API */
+HWND EdgeHandle_Create(
+    HINSTANCE hInstance,
+    EdgeSide side,
+    AppState* app
+);
 
-/*
-    Updates the edge handle position when side changes.
-*/
 void EdgeHandle_UpdatePosition(HWND hwnd, EdgeSide side);
 
 #endif

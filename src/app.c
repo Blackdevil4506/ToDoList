@@ -14,13 +14,13 @@ BOOL App_Init(AppState* app, HINSTANCE hInstance)
     if (!app->hwndMain) return FALSE;
 
     // Show the window on screen
-    ShowWindow(app->hwndMain, SW_SHOW);
+    ShowWindow(app->hwndMain, SW_HIDE);
 
     // Force a paint/update immediately
     UpdateWindow(app->hwndMain);
 
     app->edgeSide = EDGE_LEFT;   // temporary, we’ll load from settings later
-    app->hwndEdge = EdgeHandle_Create(hInstance, app->edgeSide);
+    app->hwndEdge = EdgeHandle_Create(hInstance, app->edgeSide, app);
 
 
     return TRUE;

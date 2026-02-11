@@ -86,4 +86,19 @@ HWND Sidebar_Create(HINSTANCE hInstance)
 
     return hwnd;
 }
+void Sidebar_Show(HWND hwnd)
+{
+    ShowWindow(hwnd, SW_SHOW);
+    SetForegroundWindow(hwnd);
+}
+
+void Sidebar_Hide(HWND hwnd)
+{
+    ShowWindow(hwnd, SW_HIDE);
+}
+
+BOOL Sidebar_IsVisible(HWND hwnd)
+{
+    return IsWindowVisible(hwnd);
+}
 

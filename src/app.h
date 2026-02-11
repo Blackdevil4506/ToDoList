@@ -2,18 +2,15 @@
 #define APP_H
 
 #include <windows.h>
-#include "edge_handle.h"   // IMPORTANT
+#include "edge_handle.h"
 
-typedef struct {
+typedef struct AppState {
     HINSTANCE hInstance;
 
-    // Edge handle
     HWND hwndEdge;
     EdgeSide edgeSide;
 
-    // Main panel (sidebar)
     HWND hwndMain;
-
 } AppState;
 
 /* App lifecycle */

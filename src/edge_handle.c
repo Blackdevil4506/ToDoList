@@ -1,6 +1,8 @@
 #include "edge_handle.h"
-static BOOL g_isHover = FALSE;
+#include "app.h"
+#include "sidebar_window.h"
 
+static BOOL g_isHover = FALSE;
 
 /*
     Window class name for the edge handle
@@ -17,9 +19,9 @@ static LRESULT CALLBACK EdgeHandle_WndProc(
     LPARAM lParam
 )
 {
-    switch (msg)
-    {
-        case WM_PAINT:
+switch (msg)
+{
+    case WM_PAINT:
     {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
@@ -27,10 +29,9 @@ static LRESULT CALLBACK EdgeHandle_WndProc(
         RECT rc;
         GetClientRect(hwnd, &rc);
 
-        // Background color
         COLORREF color = g_isHover
-            ? RGB(110, 110, 110)   // hover
-            : RGB(80, 80, 80);     // normal
+            ? RGB(110, 110, 110)
+            : RGB(80, 80, 80);
 
         HBRUSH brush = CreateSolidBrush(color);
         HPEN pen = CreatePen(PS_NULL, 0, color);
@@ -38,15 +39,13 @@ static LRESULT CALLBACK EdgeHandle_WndProc(
         HGDIOBJ oldBrush = SelectObject(hdc, brush);
         HGDIOBJ oldPen   = SelectObject(hdc, pen);
 
-        // Rounded rectangle (grip look)
         RoundRect(
             hdc,
             rc.left,
             rc.top,
             rc.right,
             rc.bottom,
-            12,   // corner radius X
-            12    // corner radius Y
+            12, 12
         );
 
         SelectObject(hdc, oldBrush);
@@ -57,47 +56,58 @@ static LRESULT CALLBACK EdgeHandle_WndProc(
         EndPaint(hwnd, &ps);
         return 0;
     }
+
     case WM_MOUSEMOVE:
-{
-    if (!g_isHover)
     {
-        g_isHover = TRUE;
-        InvalidateRect(hwnd, NULL, TRUE);
+        if (!g_isHover)
+        {
+            g_isHover = TRUE;
+            InvalidateRect(hwnd, NULL, TRUE);
 
-        TRACKMOUSEEVENT tme = {0};
-        tme.cbSize = sizeof(tme);
-        tme.dwFlags = TME_LEAVE;
-        tme.hwndTrack = hwnd;
-        TrackMouseEvent(&tme);
-    }
-    return 0;
-}
-
-    case WM_MOUSELEAVE:
-    {
-        g_isHover = FALSE;
-        InvalidateRect(hwnd, NULL, TRUE);
+            TRACKMOUSEEVENT tme = {0};
+            tme.cbSize = sizeof(tme);
+            tme.dwFlags = TME_LEAVE;
+            tme.hwndTrack = hwnd;
+            TrackMouseEvent(&tme);
+        }
         return 0;
     }
 
+    case WM_MOUSELEAVE:
+        g_isHover = FALSE;
+        InvalidateRect(hwnd, NULL, TRUE);
+        return 0;
+
     case WM_SETCURSOR:
-    {
         SetCursor(LoadCursor(NULL, IDC_HAND));
         return TRUE;
-    }
 
-        case WM_DESTROY:
-            return 0;
-    }
+    case WM_LBUTTONDOWN:
+{
+    AppState* app = (AppState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    if (!app) return 0;
+
+    if (Sidebar_IsVisible(app->hwndMain))
+        Sidebar_Hide(app->hwndMain);
+    else
+        Sidebar_Show(app->hwndMain);
+
+    return 0;
+}
+
+    case WM_DESTROY:
+        return 0;
+}
 
     return DefWindowProcW(hwnd, msg, wParam, lParam);
+
 }
 
 
 /*
     Create the edge handle window
 */
-HWND EdgeHandle_Create(HINSTANCE hInstance, EdgeSide side)
+HWND EdgeHandle_Create(HINSTANCE hInstance, EdgeSide side, AppState* app)
 {
     // 1. Register window class
     WNDCLASSW wc;
@@ -140,6 +150,8 @@ int x = (side == EDGE_LEFT)
         hInstance,
         NULL
     );
+
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)app);
 
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);
