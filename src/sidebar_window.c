@@ -1,4 +1,5 @@
 #include "sidebar_window.h"
+#include "edge_handle.h"
 
 static const wchar_t* SIDEBAR_CLASS = L"SidebarWindowClass";
 
@@ -48,6 +49,14 @@ static LRESULT CALLBACK Sidebar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
     EndPaint(hwnd, &ps);
     return 0;
 }
+    case WM_NCHITTEST:
+{
+    LRESULT hit = DefWindowProcW(hwnd, msg, wParam, lParam);
+    if (hit == HTCLIENT)
+        return HTCLIENT;
+
+    return HTTRANSPARENT;
+}
 
 
     }
@@ -70,27 +79,56 @@ HWND Sidebar_Create(HINSTANCE hInstance)
     RegisterClassW(&wc);
 
     HWND hwnd = CreateWindowExW(
-        0,                      // Extended window style
-        SIDEBAR_CLASS,          // Window class name
-        L"SidebarApp",          // Window title
-        WS_OVERLAPPEDWINDOW,    // Normal window for now
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
-        400,
-        500,
-        NULL,
-        NULL,
-        hInstance,
-        NULL
-    );
+    WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+    SIDEBAR_CLASS,
+    L"",
+    WS_POPUP,
+    CW_USEDEFAULT,
+    CW_USEDEFAULT,
+    400,
+    500,
+    NULL,
+    NULL,
+    hInstance,
+    NULL
+);
 
     return hwnd;
 }
-void Sidebar_Show(HWND hwnd)
+
+void Sidebar_Show(HWND hwnd, EdgeSide side)
 {
+    int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+    int panelWidth  = 400;
+    int panelHeight = 500;
+
+    int y = (screenHeight - panelHeight) / 2;
+    int x;
+
+    if (side == EDGE_LEFT)
+        x = 16;
+    else
+        x = screenWidth - panelWidth - 16;
+
+    SetWindowPos(
+        hwnd,
+        HWND_TOPMOST,
+        x,
+        y,
+        panelWidth,
+        panelHeight,
+        SWP_SHOWWINDOW
+    );
+
     ShowWindow(hwnd, SW_SHOW);
-    SetForegroundWindow(hwnd);
+
+    // 🔥 THIS IS WHAT YOU WERE MISSING
+    InvalidateRect(hwnd, NULL, TRUE);
+    UpdateWindow(hwnd);
 }
+
 
 void Sidebar_Hide(HWND hwnd)
 {

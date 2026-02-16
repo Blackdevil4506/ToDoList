@@ -6,11 +6,11 @@
 
 typedef struct AppState {
     HINSTANCE hInstance;
-
     HWND hwndEdge;
     EdgeSide edgeSide;
-
     HWND hwndMain;
+
+    BOOL sidebarVisible;
 } AppState;
 
 /* App lifecycle */

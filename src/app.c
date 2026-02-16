@@ -22,6 +22,9 @@ BOOL App_Init(AppState* app, HINSTANCE hInstance)
     app->edgeSide = EDGE_LEFT;   // temporary, we’ll load from settings later
     app->hwndEdge = EdgeHandle_Create(hInstance, app->edgeSide, app);
 
+    app->sidebarVisible = FALSE;
+    ShowWindow(app->hwndMain, SW_HIDE);
+
 
     return TRUE;
 }

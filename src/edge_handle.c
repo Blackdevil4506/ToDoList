@@ -87,12 +87,14 @@ switch (msg)
     AppState* app = (AppState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
     if (!app) return 0;
 
-    if (Sidebar_IsVisible(app->hwndMain))
+    if (app->sidebarVisible) {
         Sidebar_Hide(app->hwndMain);
-    else
-        Sidebar_Show(app->hwndMain);
+        app->sidebarVisible = FALSE;
+    } else {
+        Sidebar_Show(app->hwndMain, app->edgeSide);
+        app->sidebarVisible = TRUE;
+  }
 
-    return 0;
 }
 
     case WM_DESTROY:
