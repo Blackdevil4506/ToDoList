@@ -105,30 +105,72 @@ void Sidebar_Show(HWND hwnd, EdgeSide side)
     int panelHeight = 500;
 
     int y = (screenHeight - panelHeight) / 2;
-    int x;
 
-    if (side == EDGE_LEFT)
-        x = 16;
-    else
-        x = screenWidth - panelWidth - 16;
+    int handleWidth = 16;   // same as edge handle width
+    int startX, endX, step;
 
+    if (side == EDGE_LEFT) {
+        // panel starts hidden BEHIND the handle
+        startX = handleWidth - panelWidth;
+        endX   = handleWidth;
+        step   = 16;
+    } else {
+        // panel starts hidden BEHIND the right handle
+        startX = screenWidth - handleWidth;
+        endX   = screenWidth - panelWidth - handleWidth;
+        step   = -16;
+    }
+
+    // Place window off-screen and show it ONCE
     SetWindowPos(
         hwnd,
         HWND_TOPMOST,
-        x,
+        startX,
         y,
         panelWidth,
         panelHeight,
         SWP_SHOWWINDOW
     );
 
-    ShowWindow(hwnd, SW_SHOW);
+    // Animate
+    for (int x = startX;
+         (step > 0 ? x <= endX : x >= endX);
+         x += step)
+    {
+        SetWindowPos(
+            hwnd,
+            HWND_TOPMOST,
+            x,
+            y,
+            panelWidth,
+            panelHeight,
+            SWP_NOACTIVATE
+        );
 
-    // 🔥 THIS IS WHAT YOU WERE MISSING
-    InvalidateRect(hwnd, NULL, TRUE);
-    UpdateWindow(hwnd);
+        InvalidateRect(hwnd, NULL, TRUE);
+        UpdateWindow(hwnd);
+
+        // 👇 THIS is the key
+        MSG msg;
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        Sleep(10);
+    }
+
+    // Snap to final position
+    SetWindowPos(
+        hwnd,
+        HWND_TOPMOST,
+        endX,
+        y,
+        panelWidth,
+        panelHeight,
+        SWP_NOACTIVATE
+    );
 }
-
 
 void Sidebar_Hide(HWND hwnd)
 {
