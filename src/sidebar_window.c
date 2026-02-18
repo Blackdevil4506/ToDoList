@@ -172,10 +172,54 @@ void Sidebar_Show(HWND hwnd, EdgeSide side)
     );
 }
 
-void Sidebar_Hide(HWND hwnd)
+void Sidebar_Hide(HWND hwnd, EdgeSide side)
 {
+    RECT rc;
+    GetWindowRect(hwnd, &rc);
+
+    int panelWidth = rc.right - rc.left;
+    int y = rc.top;
+
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int handleWidth = 16;
+
+    int startX = rc.left;
+    int endX, step;
+
+    if (side == EDGE_LEFT) {
+        endX = handleWidth - panelWidth; // slide into handle
+        step = -16;
+    } else {
+        endX = screenWidth - handleWidth;
+        step = 16;
+    }
+
+    for (int x = startX;
+         (step < 0 ? x >= endX : x <= endX);
+         x += step)
+    {
+        SetWindowPos(
+            hwnd,
+            HWND_TOPMOST,
+            x,
+            y,
+            panelWidth,
+            rc.bottom - rc.top,
+            SWP_NOACTIVATE
+        );
+
+        MSG msg;
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        Sleep(10);
+    }
+
     ShowWindow(hwnd, SW_HIDE);
 }
+
 
 BOOL Sidebar_IsVisible(HWND hwnd)
 {

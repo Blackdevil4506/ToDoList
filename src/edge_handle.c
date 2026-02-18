@@ -88,7 +88,7 @@ switch (msg)
     if (!app) return 0;
 
     if (app->sidebarVisible) {
-        Sidebar_Hide(app->hwndMain);
+        Sidebar_Hide(app->hwndMain, app->edgeSide);
         app->sidebarVisible = FALSE;
     } else {
         Sidebar_Show(app->hwndMain, app->edgeSide);
